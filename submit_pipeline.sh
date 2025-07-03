@@ -6,7 +6,7 @@
 #SBATCH --mem=128G
 #SBATCH --time=3-00:00:00
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=your.email@uni-freiburg.de
+#SBATCH --mail-user=mohammad.shuvo@wildlife.uni-freiburg.de
 #SBATCH --output=11_logs/%x_%j.out
 #SBATCH --error=11_logs/%x_%j.err
 
