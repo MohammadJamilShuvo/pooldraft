@@ -1,12 +1,11 @@
 #!/bin/bash
 
 # ===============================
-# Collembola Reference Genome Pipeline
+# Collembola Reference Genome Pipeline (env-free)
 # ===============================
 
-# === Activate conda environment ===
-source /pfs/work9/workspace/scratch/fr_ms2252-collembola/entomobryo_project/00_tools/miniconda3/etc/profile.d/conda.sh
-conda activate genome_env
+# === Manually export conda environment path ===
+export PATH="/pfs/work9/workspace/scratch/fr_ms2252-collembola/entomobryo_project/00_tools/miniconda3/envs/genome_env/bin:$PATH"
 
 # === Variables ===
 WORKDIR="/pfs/work9/workspace/scratch/fr_ms2252-collembola/entomobryo_project"
@@ -14,6 +13,7 @@ THREADS=16
 KMER_SIZE=21
 MIN_CONTIG_LEN=1000
 LINEAGE="arthropoda_odb10"
+EGGNOG_DB="$WORKDIR/00_tools/eggnog_data"
 
 # === Step 1: QC ===
 fastqc "$WORKDIR/01_raw_data/"*.fastq.gz -o "$WORKDIR/02_qc"
@@ -26,10 +26,7 @@ for R1 in "$WORKDIR/01_raw_data/"*_R1_001.fastq.gz; do
   SAMPLE=$(basename "$R1" _R1_001.fastq.gz)
   R2="$WORKDIR/01_raw_data/${SAMPLE}_R2_001.fastq.gz"
   if [[ -f "$R2" ]]; then
-    fastp -i "$R1" -I "$R2" \
-          -o "${SAMPLE}_R1_trimmed.fastq.gz" \
-          -O "${SAMPLE}_R2_trimmed.fastq.gz" \
-          -h "${SAMPLE}_fastp.html" -j "${SAMPLE}_fastp.json"
+    fastp -i "$R1" -I "$R2"           -o "${SAMPLE}_R1_trimmed.fastq.gz"           -O "${SAMPLE}_R2_trimmed.fastq.gz"           -h "${SAMPLE}_fastp.html" -j "${SAMPLE}_fastp.json"
   fi
 done
 
@@ -54,9 +51,7 @@ spades.py -1 "$R1_B" -2 "$R2_B" -o spades_plotB --careful -t $THREADS -m 64
 
 # === Step 5: QUAST + BUSCO ===
 cd "$WORKDIR/07_quality_check"
-quast.py "$WORKDIR/05_assembly/megahit_plotA/final.contigs.fa" "$WORKDIR/05_assembly/megahit_plotB/final.contigs.fa" \
-         "$WORKDIR/05_assembly/spades_plotA/scaffolds.fasta" "$WORKDIR/05_assembly/spades_plotB/scaffolds.fasta" \
-         -o quast_results -t $THREADS --labels megahit_A,megahit_B,spades_A,spades_B
+quast.py "$WORKDIR/05_assembly/megahit_plotA/final.contigs.fa" "$WORKDIR/05_assembly/megahit_plotB/final.contigs.fa"          "$WORKDIR/05_assembly/spades_plotA/scaffolds.fasta" "$WORKDIR/05_assembly/spades_plotB/scaffolds.fasta"          -o quast_results -t $THREADS --labels megahit_A,megahit_B,spades_A,spades_B
 
 for A in "$WORKDIR"/05_assembly/*/*.{fa,fasta}; do
   [[ -f "$A" ]] && busco -i "$A" -o "busco_$(basename $(dirname "$A"))" -l $LINEAGE -m genome -c $THREADS
@@ -76,8 +71,7 @@ done
 cd "$WORKDIR/09_annotation"
 for MASKED in "$WORKDIR"/08_repeats/*.fa.masked; do
   SAMPLE=$(basename "$MASKED" .fa.masked)
-  braker.pl --genome="$MASKED" --species="$SAMPLE" --softmasking --cores $THREADS \
-            --workingdir "$WORKDIR/09_annotation/braker_${SAMPLE}" --skipAllTraining
+  braker.pl --genome="$MASKED" --species="$SAMPLE" --softmasking --cores $THREADS             --workingdir "$WORKDIR/09_annotation/braker_${SAMPLE}" --skipAllTraining
 done
 
 # === Step 8: Functional Annotation ===
@@ -87,7 +81,7 @@ for SAMPLE in megahit_plotA megahit_plotB spades_plotA spades_plotB; do
   GENOME="$WORKDIR/08_repeats/${SAMPLE}.fa.masked"
   gffread "$GTF" -g "$GENOME" -x "${SAMPLE}_cds.fasta" -y "${SAMPLE}_prot.fasta"
   interproscan.sh -i "${SAMPLE}_prot.fasta" -f tsv -o "${SAMPLE}_interpro.tsv" -goterms -pa -dp -cpu $THREADS
-  emapper.py -i "${SAMPLE}_prot.fasta" --data_dir "$WORKDIR/00_tools/eggnog_data" --itype proteins -o "${SAMPLE}_eggnog" --cpu $THREADS --output_dir "$WORKDIR/10_functional"
+  emapper.py -i "${SAMPLE}_prot.fasta" --data_dir "$EGGNOG_DB" --itype proteins -o "${SAMPLE}_eggnog" --cpu $THREADS --output_dir "$WORKDIR/10_functional"
 done
 
 # === Step 9: Summary & Archive ===
