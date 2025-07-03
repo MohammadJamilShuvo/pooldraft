@@ -5,7 +5,7 @@
 # ===============================
 
 # === Activate conda environment ===
-source /pfs/work9/workspace/scratch/fr_ms2252-collembola/00_tools/miniconda3/etc/profile.d/conda.sh
+source /pfs/work9/workspace/scratch/fr_ms2252-collembola/entomobryo_project/00_tools/miniconda3/etc/profile.d/conda.sh
 conda activate genome_env
 
 # === Variables ===
@@ -14,13 +14,6 @@ THREADS=16
 KMER_SIZE=21
 MIN_CONTIG_LEN=1000
 LINEAGE="arthropoda_odb10"
-
-# === Step 0: Setup Environment (SKIPPED) ===
-# cd "$TOOLDIR"
-# wget ...
-# bash miniconda.sh ...
-# conda create ...
-# conda install ...
 
 # === Step 1: QC ===
 fastqc "$WORKDIR/01_raw_data/"*.fastq.gz -o "$WORKDIR/02_qc"
@@ -33,7 +26,9 @@ for R1 in "$WORKDIR/01_raw_data/"*_R1_001.fastq.gz; do
   SAMPLE=$(basename "$R1" _R1_001.fastq.gz)
   R2="$WORKDIR/01_raw_data/${SAMPLE}_R2_001.fastq.gz"
   if [[ -f "$R2" ]]; then
-    fastp -i "$R1" -I "$R2" -o "${SAMPLE}_R1_trimmed.fastq.gz" -O "${SAMPLE}_R2_trimmed.fastq.gz" \
+    fastp -i "$R1" -I "$R2" \
+          -o "${SAMPLE}_R1_trimmed.fastq.gz" \
+          -O "${SAMPLE}_R2_trimmed.fastq.gz" \
           -h "${SAMPLE}_fastp.html" -j "${SAMPLE}_fastp.json"
   fi
 done
@@ -92,7 +87,7 @@ for SAMPLE in megahit_plotA megahit_plotB spades_plotA spades_plotB; do
   GENOME="$WORKDIR/08_repeats/${SAMPLE}.fa.masked"
   gffread "$GTF" -g "$GENOME" -x "${SAMPLE}_cds.fasta" -y "${SAMPLE}_prot.fasta"
   interproscan.sh -i "${SAMPLE}_prot.fasta" -f tsv -o "${SAMPLE}_interpro.tsv" -goterms -pa -dp -cpu $THREADS
-  emapper.py -i "${SAMPLE}_prot.fasta" --itype proteins -o "${SAMPLE}_eggnog" --cpu $THREADS --output_dir "$WORKDIR/10_functional"
+  emapper.py -i "${SAMPLE}_prot.fasta" --data_dir "$WORKDIR/00_tools/eggnog_data" --itype proteins -o "${SAMPLE}_eggnog" --cpu $THREADS --output_dir "$WORKDIR/10_functional"
 done
 
 # === Step 9: Summary & Archive ===
