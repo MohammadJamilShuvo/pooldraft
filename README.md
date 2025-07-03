@@ -52,10 +52,6 @@ entomobryo_project/
 - Functional annotations (InterPro, eggNOG)
 - Summary stats and BUSCO completeness
 
-## 🔒 License
-
-MIT License
-
 ## 👤 Author
 
-Your Name – your.email@institution.edu
+Mohammad Jamil Shuvo – jamilshuvo94@gmail.com
