@@ -36,9 +36,8 @@ zcat "$WORKDIR"/03_trimmed_reads/*_R1_trimmed.fastq.gz "$WORKDIR"/03_trimmed_rea
 jellyfish count -C -m $KMER_SIZE -s 100M -t $THREADS all_trimmed_reads.fastq -o reads.jf
 jellyfish histo -t $THREADS reads.jf > kmer_histogram.txt
 
-# === Step 4: Assembly (MEGAHIT & SPAdes) ===
+# === Step 4: Assembly ===
 cd "$WORKDIR/05_assembly"
-
 R1_A="$WORKDIR/03_trimmed_reads/2317_S1_L002_R1_trimmed.fastq.gz"
 R2_A="$WORKDIR/03_trimmed_reads/2317_S1_L002_R2_trimmed.fastq.gz"
 megahit -1 "$R1_A" -2 "$R2_A" -o megahit_plotA --presets meta-sensitive --min-contig-len $MIN_CONTIG_LEN -t $THREADS
@@ -64,7 +63,11 @@ for A in "$WORKDIR"/05_assembly/*/*.{fa,fasta}; do
   cp "$A" "${SAMPLE}.fa"
   BuildDatabase -name "${SAMPLE}_rmdb" "${SAMPLE}.fa"
   RepeatModeler -database "${SAMPLE}_rmdb" -pa $THREADS -LTRStruct -dir "./${SAMPLE}_modeler"
-  RepeatMasker -pa $THREADS -lib "${SAMPLE}_modeler/consensi.fa.classified" -dir "./${SAMPLE}_masked" -xsmall "${SAMPLE}.fa"
+  if [[ -s "${SAMPLE}_modeler/consensi.fa.classified" ]]; then
+    RepeatMasker -pa $THREADS -lib "${SAMPLE}_modeler/consensi.fa.classified"       -dir "./${SAMPLE}_masked" -xsmall "${SAMPLE}.fa"
+  else
+    echo "❌ RepeatModeler failed for $SAMPLE — skipping RepeatMasker" >&2
+  fi
 done
 
 # === Step 7: BRAKER2 Gene Prediction ===
@@ -81,7 +84,7 @@ for SAMPLE in megahit_plotA megahit_plotB spades_plotA spades_plotB; do
   GENOME="$WORKDIR/08_repeats/${SAMPLE}.fa.masked"
   gffread "$GTF" -g "$GENOME" -x "${SAMPLE}_cds.fasta" -y "${SAMPLE}_prot.fasta"
   interproscan.sh -i "${SAMPLE}_prot.fasta" -f tsv -o "${SAMPLE}_interpro.tsv" -goterms -pa -dp -cpu $THREADS
-  emapper.py -i "${SAMPLE}_prot.fasta" --data_dir "$EGGNOG_DB" --itype proteins -o "${SAMPLE}_eggnog" --cpu $THREADS --output_dir "$WORKDIR/10_functional"
+  emapper.py -i "${SAMPLE}_prot.fasta" --data_dir "$EGGNOG_DB" --itype proteins -o "${SAMPLE}_eggnog"     --cpu $THREADS --output_dir "$WORKDIR/10_functional"
 done
 
 # === Step 9: Summary & Archive ===
