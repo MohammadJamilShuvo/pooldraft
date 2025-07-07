@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=collembola_pipeline
-#SBATCH --partition=cpu
+#SBATCH --partition=cpu            
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=128G
-#SBATCH --time=3-00:00:00
+#SBATCH --mem=256G                 
+#SBATCH --time=3-00:00:00          
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=your.email@uni-freiburg.de
 #SBATCH --output=11_logs/%x_%j.out
